@@ -1,0 +1,30 @@
+[project]
+dependencies = [
+  "deepagents",
+  "tavily-python",
+  "langchain-ibm",
+  "python-dotenv",
+  "ibm-watsonx-ai",
+]
+description = "Deep Agents quickstart with Watsonx and Tavily"
+name = "deep-agents-watsonx"
+requires-python = ">=3.12,<3.13"
+version = "0.1.0"
+
+[dependency-groups]
+dev = [
+  "ruff",
+]
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+ignore = ["E501"] # Ignore line-too-long errors
+
+[tool.uv]
+package = false
