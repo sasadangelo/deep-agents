@@ -28,3 +28,8 @@ ignore = ["E501"] # Ignore line-too-long errors
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

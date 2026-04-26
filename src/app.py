@@ -1,28 +1,25 @@
 import os
-from typing import Any, Literal
+from typing import Literal
 
 from deepagents import create_deep_agent
 from dotenv import load_dotenv
-from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
-from langchain_ibm import ChatWatsonx
-from pydantic import SecretStr
 from tavily import TavilyClient
+
+from adapters.langchain_adapter import (LangChainChatModelAdapter,
+                                        create_langchain_adapter)
+from backend import ChatModel
 
 print("Loading environment variables...")
 load_dotenv()
 
-parameters: dict[str, Any] = {
-    GenParams.DECODING_METHOD: "greedy",
-    GenParams.MIN_NEW_TOKENS: 1,
-    GenParams.MAX_NEW_TOKENS: 800,
-    GenParams.TEMPERATURE: 0.1,
-}
-
-project_id = os.getenv("WATSONX_PROJECT_ID")
-tavily_api_key = os.environ["TAVILY_API_KEY"]
+# Get environment variables
+watsonx_url: str = os.getenv("WATSONX_URL", "https://us-south.ml.cloud.ibm.com")
+watsonx_api_key: str | None = os.getenv("WATSONX_APIKEY")
+project_id: str | None = os.getenv("WATSONX_PROJECT_ID")
+tavily_api_key: str = os.environ["TAVILY_API_KEY"]
 
 print("Initializing Tavily client...")
-tavily_client = TavilyClient(api_key=tavily_api_key)
+tavily_client: TavilyClient = TavilyClient(api_key=tavily_api_key)
 
 
 def internet_search(
@@ -56,12 +53,18 @@ should be included.
 """
 
 print("Initializing Watsonx model...")
-model = ChatWatsonx(
-    model_id="meta-llama/llama-3-3-70b-instruct",
-    url=SecretStr("https://us-south.ml.cloud.ibm.com"),
+# Create our ChatModel instance
+chat_model: ChatModel = ChatModel.from_name(
+    name="watsonx:meta-llama/llama-3-3-70b-instruct",
+    base_url=watsonx_url,
+    api_key=watsonx_api_key,
     project_id=project_id,
-    params=parameters,
+    temperature=0.1,
+    max_tokens=800,
 )
+
+# Wrap it in a LangChain-compatible adapter
+model: LangChainChatModelAdapter = create_langchain_adapter(chat_model)
 
 print("Creating deep agent...")
 agent = create_deep_agent(
@@ -71,9 +74,9 @@ agent = create_deep_agent(
 )
 
 print("Invoking deep agent...")
-result = agent.invoke({"messages": [{"role": "user", "content": "What is LangGraph?"}]})
+result = agent.invoke({
+    "messages": [{"role": "user", "content": "What is LangGraph?"}]
+})
 
 print("Final response:")
 print(result["messages"][-1].content)
-
-# Made with Bob
