@@ -3,11 +3,8 @@ from typing import Literal
 
 from deepagents import create_deep_agent
 from dotenv import load_dotenv
+from langchain.chat_models import init_chat_model
 from tavily import TavilyClient
-
-from adapters.langchain_adapter import (LangChainChatModelAdapter,
-                                        create_langchain_adapter)
-from backend import ChatModel
 
 print("Loading environment variables...")
 load_dotenv()
@@ -52,23 +49,21 @@ the max number of results to return, the topic, and whether raw content
 should be included.
 """
 
-print("Initializing Watsonx model...")
-# Create our ChatModel instance
-chat_model: ChatModel = ChatModel.from_name(
-    name="watsonx:meta-llama/llama-3-3-70b-instruct",
-    base_url=watsonx_url,
-    api_key=watsonx_api_key,
-    project_id=project_id,
-    temperature=0.1,
-    max_tokens=800,
-)
-
-# Wrap it in a LangChain-compatible adapter
-model: LangChainChatModelAdapter = create_langchain_adapter(chat_model)
-
-print("Creating deep agent...")
+print("Creating deep agent with Watsonx model...")
+# Deep Agents supporta direttamente il formato provider:model tramite init_chat_model
+# Il provider per WatsonX è "ibm" in LangChain
 agent = create_deep_agent(
-    model=model,
+    model=init_chat_model(
+        model="meta-llama/llama-3-3-70b-instruct",
+        model_provider="ibm",
+        url=watsonx_url,
+        apikey=watsonx_api_key,
+        project_id=project_id,
+        temperature=0.1,
+        max_tokens=800,
+        max_retries=10,  # Aumenta per reti instabili (default: 6)
+        timeout=120,     # Aumenta timeout per connessioni lente (secondi)
+    ),
     tools=[internet_search],
     system_prompt=research_instructions,
 )
