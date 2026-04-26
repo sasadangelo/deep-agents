@@ -2,6 +2,7 @@ import os
 from typing import Literal
 
 from deepagents import create_deep_agent
+from deepagents.middleware.subagents import SubAgent
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from tavily import TavilyClient
@@ -26,32 +27,49 @@ def internet_search(
     include_raw_content: bool = False,
 ):
     """Run a web search and return structured results."""
-    print(f"Running internet_search for query: {query}")
-    return tavily_client.search(
+    print("\n🔍 SUBAGENT TOOL CALL: internet_search")
+    print(f"   Query: '{query}'")
+    print(f"   Max results: {max_results}")
+    print(f"   Topic: '{topic}'")
+
+    result = tavily_client.search(
         query=query,
         max_results=max_results,
         topic=topic,
         include_raw_content=include_raw_content,
     )
 
+    print(f"✅ SUBAGENT TOOL RESULT: Found {len(result.get('results', []))} results\n")
+    return result
 
-research_instructions = """
-You are an expert researcher. Your job is to conduct thorough research
-and then write a polished report.
 
-You have access to an internet search tool as your primary means of
-gathering information.
+# Create the model instance for the subagent
+subagent_model = init_chat_model(
+    model="meta-llama/llama-3-3-70b-instruct",
+    model_provider="ibm",
+    url=watsonx_url,
+    apikey=watsonx_api_key,
+    project_id=project_id,
+    temperature=0.1,
+    max_tokens=800,
+    max_retries=10,
+    timeout=120,
+)
 
-## internet_search
+# Define the research subagent
+research_subagent: SubAgent = {
+    "name": "research-agent",
+    "description": "Used to research more in depth questions",
+    "system_prompt": "You are a great researcher with access to internet search. Use the internet_search tool to find accurate and up-to-date information.",
+    "tools": [internet_search],
+    "model": subagent_model,
+}
 
-Use this to run an internet search for a given query. You can specify
-the max number of results to return, the topic, and whether raw content
-should be included.
-"""
+print("Creating deep agent with subagent...")
+print(f"📋 Registered subagents: [{research_subagent['name']}]")
+print()
 
-print("Creating deep agent with Watsonx model...")
-# Deep Agents supporta direttamente il formato provider:model tramite init_chat_model
-# Il provider per WatsonX è "ibm" in LangChain
+# Create main agent with research subagent
 agent = create_deep_agent(
     model=init_chat_model(
         model="meta-llama/llama-3-3-70b-instruct",
@@ -61,17 +79,23 @@ agent = create_deep_agent(
         project_id=project_id,
         temperature=0.1,
         max_tokens=800,
-        max_retries=10,  # Aumenta per reti instabili (default: 6)
-        timeout=120,     # Aumenta timeout per connessioni lente (secondi)
+        max_retries=10,
+        timeout=120,
     ),
-    tools=[internet_search],
-    system_prompt=research_instructions,
+    subagents=[research_subagent],
+    system_prompt="You are a helpful assistant. When you need to research information, delegate to the research-agent subagent.",
 )
 
-print("Invoking deep agent...")
+print("=" * 80)
+print("🚀 Invoking deep agent with user query...")
+print("=" * 80)
+
 result = agent.invoke({
     "messages": [{"role": "user", "content": "What is LangGraph?"}]
 })
 
-print("Final response:")
+print("=" * 80)
+print("✅ Agent execution completed")
+print("=" * 80)
+print("\n📝 Final response:")
 print(result["messages"][-1].content)
