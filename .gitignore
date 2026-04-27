@@ -3,3 +3,4 @@
 .env
 beeai-framework
 **/__pycache__/
+agent_graph.png
