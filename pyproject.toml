@@ -7,6 +7,7 @@ dependencies = [
   "python-dotenv",
   "ibm-watsonx-ai",
   "rich",
+  "langsmith",
 ]
 description = "Deep Agents quickstart with Watsonx and Tavily"
 name = "deep-agents-watsonx"
